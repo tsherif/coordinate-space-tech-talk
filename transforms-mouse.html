@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Coordinate Spaces Demo</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow-y: hidden;
+        }
+    </style>
+    <script src="gl-matrix-min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById("canvas");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const ORIGIN_COLOR = 'red';
+        const POINT_COLOR = 'blue';
+        const SCALE = 40;
+
+        const ctx = canvas.getContext("2d");
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.lineWidth = 1 / SCALE;
+        ctx.scale(SCALE, SCALE);
+        ctx.font = "16px sans-serif";
+
+        const {vec2, mat3} = glMatrix;
+
+        const lines = [];
+
+        for (let i = -5; i <= 5; ++i) {
+            lines.push([[i, 5], [ i, -5]]);
+            lines.push([[5, i], [-5, i ]]);
+        }
+
+        const xTicks = [];
+        const yTicks = [];
+
+        for (let i = -5; i <= 5; ++i) {
+            xTicks.push([i, -5.2]);
+            yTicks.push([-5.5, i]);
+        }
+
+        const origin = [0, 0];
+        const point = [0, 0];
+
+        canvas.addEventListener("mousemove", e => {
+            point[0] = (e.clientX - (canvas.width / 2)) / SCALE;
+            point[1] = (e.clientY - (canvas.height / 2)) / SCALE;
+        });
+
+        //////////////////////////////////
+        // Transform
+        //////////////////////////////////
+
+        const identity = mat3.create();
+        const translation = mat3.fromTranslation(mat3.create(), vec2.fromValues(0.5, 1));
+        const rotation = mat3.fromRotation(mat3.create(), Math.PI / 4);
+        const scale = mat3.fromScaling(mat3.create(), vec2.fromValues(1.5, 1.5));
+        const skew = mat3.fromScaling(mat3.create(), vec2.fromValues(3, 2));
+
+        const xform = scale;
+        mat3.multiply(xform, rotation, xform);
+        mat3.multiply(xform, translation, xform);
+
+        const inverseTransform = mat3.invert(mat3.create(), xform);
+
+        let transformCoords = true;
+
+        //////////////////////////////////
+        // Draw loop
+        //////////////////////////////////
+
+        const duration = 2000;
+        const startTime = performance.now();
+        requestAnimationFrame(function loop() {
+            let pointXform = transformCoords ? identity : xform;
+            let coordXform = transformCoords ? inverseTransform : identity;
+
+            const transformedLines = lines.map(([v1, v2]) => [vec2.transformMat3(vec2.create(), v1, coordXform), vec2.transformMat3(vec2.create(), v2, coordXform)]);
+            const transformedOrigin = vec2.transformMat3(vec2.create(), origin, coordXform)
+            const transformedXTicks = xTicks.map(v => vec2.transformMat3(vec2.create(), v, coordXform));
+            const transformedYTicks = yTicks.map(v => vec2.transformMat3(vec2.create(), v, coordXform));
+            const transformedPoint = vec2.transformMat3(vec2.create(), point, pointXform);
+            const pointText = vec2.transformMat3(vec2.create(), point, xform);
+
+            const t = Math.min((performance.now() - startTime) / duration, 1);
+
+            const drawLines = lines.map(([v1, v2], i) => {
+                const [tv1, tv2] = transformedLines[i];
+                return [vec2.lerp(vec2.create(), v1, tv1, t), vec2.lerp(vec2.create(), v2, tv2, t)];
+            });
+            const drawOrigin = vec2.lerp(vec2.create(), origin, transformedOrigin, t)
+            const drawXTicks = xTicks.map((v, i) => vec2.lerp(vec2.create(), v, transformedXTicks[i], t));
+            const drawYTicks = yTicks.map((v, i) => vec2.lerp(vec2.create(), v, transformedYTicks[i], t));
+            const drawPoint = vec2.lerp(vec2.create(), point, transformedPoint, t)
+            const drawPointText = vec2.lerp(vec2.create(), point, pointText, t)
+
+            ctx.clearRect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+
+
+            ctx.strokeStyle = "black";
+            ctx.beginPath();
+            for (let i = 0; i < drawLines.length; ++i) {
+                const [v1, v2] = drawLines[i];
+                ctx.moveTo(...v1);
+                ctx.lineTo(...v2);
+            }
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.fillStyle = 'red';
+            ctx.arc(drawOrigin[0], drawOrigin[1], 0.1, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.fillStyle = "black";
+            ctx.scale(1 / SCALE, 1 / SCALE);
+            for (let i = 0; i < xTicks.length; ++i) {
+                ctx.fillText(xTicks[i][0], drawXTicks[i][0] * SCALE - 5, drawXTicks[i][1] * SCALE);
+                ctx.fillText(yTicks[i][1], drawYTicks[i][0] * SCALE, drawYTicks[i][1] * SCALE + 5);
+            }
+            ctx.fillText("X", drawXTicks[5][0] * SCALE - 20, drawXTicks[5][1] * SCALE - 20);
+            ctx.fillText("Y", drawYTicks[5][0] * SCALE - 20, drawYTicks[5][1] * SCALE + 20);
+            ctx.scale(SCALE, SCALE);
+
+
+            ctx.strokeStyle = "blue";
+            ctx.fillStyle = 'blue';
+            ctx.beginPath();
+            ctx.moveTo(...drawOrigin);
+            ctx.lineTo(...drawPoint);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(drawPoint[0], drawPoint[1], 0.15, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.scale(1 / SCALE, 1 / SCALE);
+            ctx.fillText(`(${drawPointText[0].toFixed(1)}, ${drawPointText[1].toFixed(1)})`, drawPoint[0] * SCALE + 5, drawPoint[1] * SCALE - 5);
+            ctx.scale(SCALE, SCALE);
+
+            requestAnimationFrame(loop);
+        })
+    </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+What is a coordinate space? Definined by:
+- A point, the origin.
+- n basis vectors, that the define the direction and unit size of each axis (n is the number of dimensions of the space).
+
+
+
+EXERCISE
+
+Clip space:
+    - (0, 0) is the center of the canvas
+    - (-1, -1) is the top left corner of the canvas
+    - (1, 1) is the bottom right corner of the canvas
+
+Canvas space:
+    - (0, 0) is the top left corner of the canvas
+    - (canvas width, canvas height) is the bottom right corner of the canvas
+
+
+Define a transformation that converts clip space coordinates to canvas space coordinates. This will be a combination of scale, rotation and translation matrices (any of which might be identity). The image should be a 5 red points arranged in a diamond on the canvas, with the width and height being have those of the canvas.
+
+*******************************************
+*                                         *
+*                    *                    *
+*                                         *
+*          *         *         *          *
+*                                         *
+*                    *                    *
+*                                         *
+*******************************************

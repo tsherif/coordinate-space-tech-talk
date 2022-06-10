@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Matrix Transform Demo</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow-y: hidden;
+        }
+    </style>
+    <script src="gl-matrix-min.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById("canvas");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "red";
+
+        const {vec2, mat3} = glMatrix;
+
+        const vertices = [
+            [0.0, 0.0],
+            [-0.5, 0.0],
+            [0.5, 0.0],
+            [0.0, -0.5],
+            [0.0, 0.5]
+        ];
+
+        //////////////////////////////////
+        // Transform
+        //////////////////////////////////
+
+        const xform = mat3.create();
+        const scale = mat3.fromScaling(mat3.create(), vec2.fromValues(canvas.width / 2, canvas.height / 2));
+        const translate = mat3.fromTranslation(mat3.create(), vec2.fromValues(canvas.width / 2, canvas.height / 2));
+        mat3.multiply(xform, translate, scale);
+
+        const transformedVertices = vertices.map(v => vec2.transformMat3(vec2.create(), v, xform));
+
+        for (let i = 0; i < transformedVertices.length; ++i) {
+            ctx.beginPath();
+            ctx.arc(transformedVertices[i][0], transformedVertices[i][1], 5, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    </script>
+</body>
+</html>
